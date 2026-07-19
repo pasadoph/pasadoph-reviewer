@@ -277,12 +277,13 @@
         (isReg ? '<p style="font-size:0.74rem;color:var(--muted);text-align:center;margin-top:10px">Free forever plan. No credit card needed.</p>'
                 : '<p class="auth-switch" style="margin-top:10px"><button id="afForgot">Forgot password?</button></p>') +
         (!isConfigured ? '<button class="btn btn-block" id="afGuest" style="margin-top:10px">Continue as guest (preview)</button>' : "") +
-        '<div id="afMsg"></div>' + previewNote +
+        '<div id="afMsg">' + (state.flashMsg ? '<div class="form-msg ok">' + esc(state.flashMsg) + "</div>" : "") + "</div>" + previewNote +
         '<p class="auth-switch">' +
           (isReg ? 'Already registered? <button id="afSwitch">Log in</button>' : 'New here? <button id="afSwitch">Create a free account</button>') +
         "</p>" +
       "</div>";
 
+    state.flashMsg = null;
     document.getElementById("afSwitch").onclick = function () {
       go("auth", isReg ? "login" : "register");
     };
@@ -716,7 +717,10 @@
         var res = await fetch("/.netlify/functions/create-checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: state.user && state.user.email ? state.user.email : "" })
+          body: JSON.stringify({
+            email: state.user && state.user.email ? state.user.email : "",
+            origin: window.location.origin
+          })
         });
         var out = await res.json();
         if (out && out.url) { window.location.href = out.url; return; }
@@ -881,6 +885,11 @@
       renderPaidWait();
       return;
     }
+    if (justPaid && !state.user) {
+      state.flashMsg = "Payment received! Log in with your account email to access your premium features.";
+      go("auth", "login");
+      return;
+    }
     go(state.user ? "dashboard" : "landing");
   })();
 
@@ -889,7 +898,7 @@
       '<div class="auth-card" style="text-align:center">' +
         '<div class="verify-icon" aria-hidden="true">\u2713</div>' +
         "<h2>Payment received!</h2>" +
-        '<p class="sub">Activating your premium access\u2026 this usually takes a few seconds.</p>' +
+        '<p class="sub">Activating your premium access\u2026 this usually takes a few seconds. Please stay on this page.</p>' +
         '<div id="pwMsg"></div>' +
       "</div>";
     var tries = 0;
