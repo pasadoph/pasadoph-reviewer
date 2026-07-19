@@ -924,7 +924,7 @@
       '<div class="auth-card" style="text-align:center">' +
         '<div class="verify-icon" aria-hidden="true">\u2713</div>' +
         "<h2>Payment received!</h2>" +
-        '<p class="sub">Salamat sa iyong bayad! Please wait a moment \u2014 activating your premium access and taking you to your review desk. Do not close this page.</p>' +
+        '<p class="sub"> Please wait a moment \u2014 activating your premium access and taking you to your review desk. Do not close this page.</p>' +
         '<div class="progress-track" style="margin:14px 0"><div class="progress-fill" id="pwBar" style="width:8%"></div></div>' +
         '<div id="pwMsg"></div>' +
       "</div>";
