@@ -762,7 +762,9 @@
       await loadProfile();
       if (state.premium) { go("dashboard"); return; }
       document.getElementById("upMsg").innerHTML =
-        '<div class="form-msg err">Not activated yet. Activation is automatic within a few minutes of payment — if it\'s been longer, use Contact us below with your payment reference.</div>';
+        '<div class="form-msg err">We don\'t see an activated payment on this account yet.<br><br>' +
+        '<b>If you just paid:</b> please wait about a minute and tap this button again \u2014 activation is automatic. You may also log out and log back in using the same email address you used when paying.<br><br>' +
+        'If the issue continues, tap <b>Contact us</b> below and send your payment reference number so we can link your payment to your account right away.</div>';
       this.disabled = false;
     };
   }
@@ -935,7 +937,10 @@
     go(state.user ? "dashboard" : "landing");
   })();
 
-  function renderPaidWait() {
+  async function renderPaidWait() {
+    // If the webhook already activated this account, go straight in.
+    await loadProfile();
+    if (state.premium) { go("dashboard"); return; }
     $app.innerHTML =
       '<div class="auth-card" style="text-align:center">' +
         '<div class="verify-icon" aria-hidden="true">\u2713</div>' +
@@ -948,14 +953,14 @@
     var timer = setInterval(async function () {
       tries++;
       var bar = document.getElementById("pwBar");
-      if (bar) bar.style.width = Math.min(95, 8 + tries * 10) + "%";
+      if (bar) bar.style.width = Math.min(95, 8 + tries * 5) + "%";
       await loadProfile();
       if (state.premium) {
         clearInterval(timer);
         go("dashboard");
         return;
       }
-      if (tries >= 10) {
+      if (tries >= 20) {
         clearInterval(timer);
         document.getElementById("pwMsg").innerHTML =
           '<div class="form-msg ok">Payment confirmed \u2014 activation is finishing up. Use the button below in a minute, or Contact us if it takes longer.</div>' +
@@ -965,6 +970,6 @@
           if (state.premium) go("dashboard");
         };
       }
-    }, 3000);
+    }, 1500);
   }
 })();
