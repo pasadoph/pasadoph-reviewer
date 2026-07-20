@@ -6,6 +6,47 @@
 
 const crypto = require("crypto");
 
+
+// --- send a branded receipt via Brevo (optional; skipped if no API key) ---
+async function sendReceipt(email, amountCentavos, refNo) {
+  var key = process.env.BREVO_API_KEY;
+  if (!key || !email) return "no-receipt";
+  var peso = (amountCentavos / 100).toFixed(2);
+  var html = ''
+    + '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5ef;padding:32px 16px;font-family:Arial,Helvetica,sans-serif">'
+    + '<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border:2px solid #1b2a55;border-radius:12px;padding:32px">'
+    + '<tr><td align="center" style="padding-bottom:6px"><table cellpadding="0" cellspacing="0"><tr><td style="width:56px;height:56px;background:#f5b800;border:3px solid #1b2a55;border-radius:50%;text-align:center;font-size:26px;font-weight:bold;color:#1b2a55">P</td></tr></table></td></tr>'
+    + '<tr><td align="center" style="font-size:22px;font-weight:bold;color:#1b2a55;padding-top:12px">PasadoPH</td></tr>'
+    + '<tr><td align="center" style="font-size:11px;letter-spacing:2px;color:#6d7386;padding-bottom:20px">CSE-PPT REVIEWER</td></tr>'
+    + '<tr><td align="center" style="font-size:19px;font-weight:bold;color:#1e7d4e;padding-bottom:8px">Payment received. Salamat!</td></tr>'
+    + '<tr><td align="center" style="font-size:14px;color:#38405e;line-height:1.5;padding-bottom:20px">Your PasadoPH Premium access is now active on this email address. Just log in and start reviewing.</td></tr>'
+    + '<tr><td style="border-top:1px dashed #d9d4c5;padding-top:16px;font-size:14px;color:#1b2a55">'
+    + '<b>OFFICIAL RECEIPT</b><br/><br/>'
+    + 'Item: PasadoPH Premium &mdash; Lifetime Access<br/>'
+    + 'Amount paid: <b>PHP ' + peso + '</b><br/>'
+    + 'Reference no: ' + (refNo || "-") + '<br/>'
+    + 'Account: ' + email + '<br/>'
+    + 'Date: ' + new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" })
+    + '</td></tr>'
+    + '<tr><td align="center" style="padding-top:24px"><a href="https://pasadophreviewer.com" style="display:inline-block;background:#f5b800;color:#1b2a55;font-size:15px;font-weight:bold;text-decoration:none;padding:13px 34px;border:2px solid #1b2a55;border-radius:10px">Go to my review desk</a></td></tr>'
+    + '<tr><td align="center" style="font-size:11px;color:#9aa0b0;padding-top:22px;line-height:1.5">Questions? Reply to this email or use the Contact us form on our site.<br/>PasadoPH is an independent study tool, not affiliated with the Civil Service Commission.</td></tr>'
+    + '</table></td></tr></table>';
+
+  try {
+    var r = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": key, "Content-Type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        sender: { name: "PasadoPH", email: process.env.RECEIPT_FROM || "noreply@pasadophreviewer.com" },
+        to: [{ email: email }],
+        subject: "Your PasadoPH receipt \u2014 Premium access activated",
+        htmlContent: html
+      })
+    });
+    return r.ok ? "receipt-sent" : "receipt-failed-" + r.status;
+  } catch (e) { return "receipt-error"; }
+}
+
 exports.handler = async function (event) {
   try {
     const secret = process.env.PAYMONGO_WEBHOOK_SECRET || "";
@@ -41,6 +82,14 @@ exports.handler = async function (event) {
       });
 
     if (!found.length) return { statusCode: 200, body: "no emails in payload" };
+
+    // amount + reference for the receipt
+    var amt = 0, ref = "";
+    try {
+      var at = payload.data.attributes.data.attributes || {};
+      amt = at.amount || (at.payments && at.payments[0] && at.payments[0].attributes && at.payments[0].attributes.amount) || 0;
+      ref = at.reference_number || (at.payment_intent && at.payment_intent.id) || payload.data.attributes.data.id || "";
+    } catch (e) {}
 
     // --- flip is_premium for every matching profile ---
     const url = process.env.SUPABASE_URL;
