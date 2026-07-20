@@ -29,8 +29,22 @@ async function sendReceipt(email, amountCentavos, refNo) {
     + 'Date: ' + new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" })
     + '</td></tr>'
     + '<tr><td align="center" style="padding-top:24px"><a href="https://pasadophreviewer.com" style="display:inline-block;background:#f5b800;color:#1b2a55;font-size:15px;font-weight:bold;text-decoration:none;padding:13px 34px;border:2px solid #1b2a55;border-radius:10px">Go to my review desk</a></td></tr>'
-    + '<tr><td align="center" style="font-size:11px;color:#9aa0b0;padding-top:22px;line-height:1.5">Questions? Reply to this email or use the Contact us form on our site.<br/>PasadoPH is an independent study tool, not affiliated with the Civil Service Commission.</td></tr>'
+    + '<tr><td align="center" style="font-size:11px;color:#9aa0b0;padding-top:22px;line-height:1.5">Questions? Email us at <a href="mailto:support@pasadophreviewer.com" style="color:#1b2a55">support@pasadophreviewer.com</a> or use the Contact us form on our site.<br/>PasadoPH is an independent study tool, not affiliated with the Civil Service Commission.</td></tr>'
     + '</table></td></tr></table>';
+
+  var text = 'PasadoPH — CSE-PPT Reviewer\n\n'
+    + 'Payment received. Salamat!\n\n'
+    + 'Your PasadoPH Premium access is now active on this email address. '
+    + 'Just log in at https://pasadophreviewer.com and start reviewing.\n\n'
+    + 'OFFICIAL RECEIPT\n'
+    + 'Item: PasadoPH Premium - Lifetime Access\n'
+    + 'Amount paid: PHP ' + peso + '\n'
+    + 'Reference no: ' + (refNo || "-") + '\n'
+    + 'Account: ' + email + '\n'
+    + 'Date: ' + new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }) + '\n\n'
+    + 'Go to your review desk: https://pasadophreviewer.com\n\n'
+    + 'Questions? Email us at support@pasadophreviewer.com or use the Contact us form on our site.\n\n'
+    + 'PasadoPH is an independent study tool, not affiliated with the Civil Service Commission.';
 
   try {
     var r = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -38,9 +52,11 @@ async function sendReceipt(email, amountCentavos, refNo) {
       headers: { "api-key": key, "Content-Type": "application/json", accept: "application/json" },
       body: JSON.stringify({
         sender: { name: "PasadoPH", email: process.env.RECEIPT_FROM || "noreply@pasadophreviewer.com" },
+        replyTo: { name: "PasadoPH Support", email: "support@pasadophreviewer.com" },
         to: [{ email: email }],
         subject: "Your PasadoPH receipt \u2014 Premium access activated",
-        htmlContent: html
+        htmlContent: html,
+        textContent: text
       })
     });
     return r.ok ? "receipt-sent" : "receipt-failed-" + r.status;
