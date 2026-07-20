@@ -382,3 +382,20 @@ img { max-width: 100%; }
 .faq-q.open .faq-caret{transform:rotate(45deg)}
 .faq-a{padding:0 2px 16px}
 .faq-a p{margin:0;font-size:0.95rem;line-height:1.65;color:var(--muted)}
+
+/* ---------- topbar: mobile ---------- */
+.topbar-inner { gap: 8px; }
+.topbar-actions { flex: 0 0 auto; }
+.brand { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.brand span:not(.brand-bubble) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the email chip is what pushes Log out off-screen on phones —
+   hide it below 640px; the dashboard already shows plan status */
+.user-chip { display: none; }
+@media (min-width: 640px) { .user-chip { display: inline; } }
+
+/* keep both topbar buttons compact and always reachable on mobile */
+.tb-btn { padding: 8px 12px; font-size: 0.82rem; flex: 0 0 auto; white-space: nowrap; }
+.tb-out { background: var(--ink); color: var(--paper); }
+.tb-out:hover { background: var(--ink-deep); color: var(--paper); }
+@media (min-width: 640px) { .tb-btn { padding: 10px 16px; font-size: 0.9rem; } }
