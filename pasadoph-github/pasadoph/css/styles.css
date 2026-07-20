@@ -324,36 +324,61 @@ img { max-width: 100%; }
 .strength-fill { height: 100%; width: 0; border-radius: 99px; transition: width 0.15s ease; }
 .strength-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); margin-top: 4px; min-height: 1em; }
 .verify-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--sun-soft); border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; margin: 0 auto 14px; }
-/* build v2.1 */
 
-/* ---------- mobile header: keep actions visible & tappable ---------- */
-@media (max-width: 640px) {
-  .topbar-inner { gap: 8px; }
-  .brand { font-size: 1rem; }
-  .user-chip { display: none; }
-  .topbar-actions { gap: 6px; flex: none; }
-  .topbar-actions .btn { padding: 8px 12px; font-size: 0.8rem; white-space: nowrap; }
-  .topbar-actions .btn-ghost { border: 2px solid var(--ink); background: var(--white); box-shadow: var(--shadow); }
+/* ---------- exam countdown ---------- */
+.exam-countdown{
+  background:var(--ink);
+  border-radius:var(--radius);
+  padding:16px 18px;
+  margin:0 0 14px;
 }
-@media (max-width: 380px) {
-  .brand { font-size: 0.92rem; }
-  .topbar-actions .btn { padding: 7px 10px; font-size: 0.75rem; }
+.ec-main{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.ec-days{
+  font-family:var(--font-display);
+  font-size:1.45rem;
+  color:var(--sun);
+  line-height:1.1;
 }
+.ec-note{font-size:0.95rem;color:var(--paper);opacity:0.92}
+.ec-disclaimer{
+  margin:10px 0 0;
+  font-size:0.74rem;
+  line-height:1.5;
+  color:var(--paper);
+  opacity:0.62;
+  border-top:1px solid rgba(247,245,239,0.18);
+  padding-top:9px;
+}
+.ec-disclaimer a{color:var(--sun);text-decoration:underline}
 
-/* ---------- topbar: guaranteed-visible actions on small screens ---------- */
-.topbar-inner { flex-wrap: nowrap; }
-.topbar-actions { flex: 0 0 auto; }
-.tb-btn { white-space: nowrap; }
-.tb-out { background: var(--ink); color: var(--white); border-color: var(--ink); }
-@media (max-width: 700px) {
-  .wrap { padding: 0 12px; }
-  .brand { font-size: 0.95rem; gap: 6px; }
-  .brand-bubble { width: 18px; height: 18px; }
-  .user-chip { display: none !important; }
-  .topbar-actions { gap: 6px; }
-  .topbar-actions .btn { padding: 8px 10px; font-size: 0.78rem; box-shadow: none; }
+/* ---------- faq ---------- */
+.faq-wrap{max-width:720px;margin:0 auto;padding:8px 0 40px}
+.faq-list{margin-top:18px;border-top:2px solid var(--ink)}
+.faq-item{border-bottom:1px solid var(--line)}
+.faq-q{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  background:none;
+  border:0;
+  padding:15px 2px;
+  text-align:left;
+  font-family:var(--font-body);
+  font-size:1rem;
+  font-weight:700;
+  color:var(--ink);
+  cursor:pointer;
 }
-@media (max-width: 400px) {
-  .brand { font-size: 0.85rem; }
-  .topbar-actions .btn { padding: 7px 9px; font-size: 0.72rem; border-width: 1.5px; }
+.faq-q:hover{color:var(--ink-deep)}
+.faq-caret{
+  font-family:var(--font-mono);
+  font-size:1.2rem;
+  color:var(--sun);
+  flex:0 0 auto;
+  line-height:1.2;
 }
+.faq-q.open .faq-caret{transform:rotate(45deg)}
+.faq-a{padding:0 2px 16px}
+.faq-a p{margin:0;font-size:0.95rem;line-height:1.65;color:var(--muted)}
