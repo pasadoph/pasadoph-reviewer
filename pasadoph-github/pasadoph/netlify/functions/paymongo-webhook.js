@@ -113,7 +113,19 @@ exports.handler = async function (event) {
       if (Array.isArray(rows) && rows.length) updated = updated.concat(rows.map(function (r) { return r.email; }));
     }
 
-    return { statusCode: 200, body: "premium granted: " + (updated.join(", ") || "no matching account — manual check needed") };
+    // --- send the branded receipt to each activated account ---
+    var receiptStatus = "no-recipient";
+    var receiptTargets = updated.length ? updated : found;
+    for (var i = 0; i < receiptTargets.length; i++) {
+      receiptStatus = await sendReceipt(receiptTargets[i], amt, ref);
+    }
+
+    return {
+      statusCode: 200,
+      body: "premium granted: " +
+        (updated.join(", ") || "no matching account — manual check needed") +
+        " | receipt: " + receiptStatus
+    };
   } catch (e) {
     return { statusCode: 500, body: "error: " + e.message };
   }
