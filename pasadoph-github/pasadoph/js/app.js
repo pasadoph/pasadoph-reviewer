@@ -50,6 +50,12 @@
     go("contact");
   });
 
+  var $faqLink = document.getElementById("faqLink");
+  if ($faqLink) $faqLink.addEventListener("click", function (e) {
+    e.preventDefault();
+    go("faq");
+  });
+
   /* ---------------- helpers ---------------- */
 
   function esc(s) {
@@ -152,6 +158,7 @@
     else if (view === "results") renderResults();
     else if (view === "review") renderReview();
     else if (view === "upgrade") renderUpgrade();
+    else if (view === "faq") renderFaq();
   }
 
   function renderTopbar() {
@@ -417,6 +424,44 @@
 
   /* ---------------- dashboard ---------------- */
 
+  /* ---------------- exam countdown ----------------
+     When the CSC announces the next schedule, update EXAM_DATE and
+     EXAM_LABEL below. Nothing else needs to change. */
+
+  var EXAM_DATE  = "2026-08-09";
+  var EXAM_LABEL = "Sunday, August 9, 2026";
+
+  function examCountdownHtml() {
+    var exam = new Date(EXAM_DATE + "T00:00:00+08:00");
+    var now = new Date();
+    var days = Math.ceil((exam - now) / 86400000);
+
+    var head, note;
+    if (days > 1) {
+      head = days + " days to go";
+      note = "Next CSE-PPT (Professional & Subprofessional) \u2014 " + EXAM_LABEL + ".";
+    } else if (days === 1) {
+      head = "Bukas na!";
+      note = "The CSE-PPT is tomorrow, " + EXAM_LABEL + ". Rest well and prepare your requirements tonight.";
+    } else if (days === 0) {
+      head = "Exam day";
+      note = "Good luck! Kaya mo \u2018yan.";
+    } else {
+      head = "Keep reviewing";
+      note = "Check csc.gov.ph for the next examination schedule.";
+    }
+
+    return (
+      '<div class="exam-countdown">' +
+        '<div class="ec-main">' +
+          '<span class="ec-days">' + esc(head) + "</span>" +
+          '<span class="ec-note">' + esc(note) + "</span>" +
+        "</div>" +
+        '<p class="ec-disclaimer">Examination schedules, venues, and requirements are set solely by the Civil Service Commission and may change without notice. PasadoPH is not a source of official examination information. For official and up-to-date announcements, visit <a href="https://csc.gov.ph" target="_blank" rel="noopener noreferrer">csc.gov.ph</a> or contact your CSC Regional or Field Office.</p>' +
+      "</div>"
+    );
+  }
+
   function renderDashboard() {
     if (!state.user) { go("auth", "login"); return; }
 
@@ -441,6 +486,7 @@
         '<p class="sub">Passing grade is 80.00 — practice by topic, then take the mock exam.</p></div>' +
         '<span class="premium-pill ' + (state.premium ? "paid" : "free") + '">' + (state.premium ? "PREMIUM" : "FREE PLAN") + "</span>" +
       "</div>" +
+      examCountdownHtml() +
       '<div class="mock-banner">' +
         "<div><h3>Full mock exam · 170 items · timed</h3>" +
         "<p>Mixed topics in exam proportion, 3 hours 10 minutes on the clock — just like exam day.</p></div>" +
@@ -892,6 +938,92 @@
         $out.innerHTML = '<div class="form-msg err">Could not send right now. Please try again in a moment.</div>';
         this.disabled = false;
       }
+    };
+  }
+
+  /* ---------------- faq ---------------- */
+
+  function faqItems() { return [
+    {
+      q: "I didn't get my verification email. What do I do?",
+      a: "Check your spam or junk folder first \u2014 that's where it usually is. Open it and mark it as \u201cNot spam\u201d so future emails from us land in your inbox. Also check any Promotions or Updates tab. If it's still missing after 10 minutes, use the Contact us form and we'll help you sort it out."
+    },
+    {
+      q: "What's the difference between Free and Premium?",
+      a: "Free gives you the first " + freeLimit() + " questions in each topic and shows your score, but the detailed solutions stay locked and the mock exam isn't included. Premium unlocks all " + totalQuestions() + " questions, every worked solution, and the full timed mock exam."
+    },
+    {
+      q: "Is this a subscription?",
+      a: "No. It's a one-time payment with lifetime access. There's no monthly fee, no auto-renew, and nothing to cancel."
+    },
+    {
+      q: "Do I need to buy separately for Professional and Subprofessional?",
+      a: "No \u2014 both levels are included in one purchase. All topics are available to you regardless of which level you're taking."
+    },
+    {
+      q: "How do I pay?",
+      a: "Through PayMongo, which accepts GCash, Maya, credit and debit cards, and online banking. Your payment goes to PayMongo's secure checkout, not directly to us."
+    },
+    {
+      q: "I paid but my access hasn't unlocked yet.",
+      a: "Activation is usually instant. If it hasn't unlocked, log out and log back in first. Make sure you paid using the same email address as your PasadoPH account \u2014 that's how we match the payment. If it's still locked, use the Contact us form with your payment reference and we'll activate it manually."
+    },
+    {
+      q: "Can I use PasadoPH on my phone?",
+      a: "Yes. It works in any mobile browser, and your scores sync across devices as long as you're logged in with the same account."
+    },
+    {
+      q: "Will my progress be saved?",
+      a: "Yes. Your best score per topic is saved to your account and follows you across devices."
+    },
+    {
+      q: "Is PasadoPH affiliated with or accredited by the CSC?",
+      a: "No. PasadoPH is an independent study tool. It is not affiliated with, endorsed by, accredited by, or otherwise connected to the Civil Service Commission. The CSC does not accredit review centers or review materials \u2014 any reviewer claiming CSC accreditation is misrepresenting itself."
+    },
+    {
+      q: "Are these actual questions from past civil service examinations?",
+      a: "No. All items are original, simulated questions written specifically for this tool, based on the officially published CSE-PPT examination scope. We do not use, reproduce, or distribute actual examination questions, in compliance with Republic Act No. 9416. Practicing with PasadoPH does not guarantee a passing score."
+    },
+    {
+      q: "Where do I ask about my exam application, schedule, venue, or results?",
+      a: "Those are official CSC matters and we can't answer them. Please contact the Civil Service Commission at csc.gov.ph or your CSC Regional or Field Office."
+    }
+  ]; }
+
+  function renderFaq() {
+    var items = faqItems().map(function (it, i) {
+      return (
+        '<div class="faq-item">' +
+          '<button class="faq-q" data-i="' + i + '" aria-expanded="false">' +
+            "<span>" + esc(it.q) + "</span><span class=\"faq-caret\" aria-hidden=\"true\">+</span>" +
+          "</button>" +
+          '<div class="faq-a" id="faqA' + i + '" hidden><p>' + esc(it.a) + "</p></div>" +
+        "</div>"
+      );
+    }).join("");
+
+    $app.innerHTML =
+      '<div class="faq-wrap">' +
+        "<h2>Frequently asked questions</h2>" +
+        '<p class="sub">Answers about using PasadoPH. For questions about examination eligibility, application, scheduling, venues, or results, please contact the Civil Service Commission at <a href="https://csc.gov.ph" target="_blank" rel="noopener noreferrer">csc.gov.ph</a> or your CSC Regional or Field Office \u2014 PasadoPH cannot answer official examination matters.</p>' +
+        '<div class="faq-list">' + items + "</div>" +
+        '<p class="auth-switch" style="margin-top:20px">Still need help? <button id="faqContact">Contact us</button></p>' +
+        '<p class="auth-switch"><button id="faqBack">Back</button></p>' +
+      "</div>";
+
+    Array.prototype.forEach.call(document.querySelectorAll(".faq-q"), function (btn) {
+      btn.onclick = function () {
+        var i = btn.getAttribute("data-i");
+        var panel = document.getElementById("faqA" + i);
+        var open = !panel.hidden;
+        panel.hidden = open;
+        btn.setAttribute("aria-expanded", open ? "false" : "true");
+        btn.classList.toggle("open", !open);
+      };
+    });
+    document.getElementById("faqContact").onclick = function () { go("contact"); };
+    document.getElementById("faqBack").onclick = function () {
+      go(state.user ? "dashboard" : "landing");
     };
   }
 
