@@ -9,7 +9,7 @@ window.PASADO_CONFIG = {
 
   PRICE_LABEL: "₱299",
   PRICE_COMPARE: "₱499",
-  PRICE_URGENCY: "Launch price until July 31 — then ₱499",
+  PRICE_URGENCY: "Launch price until August 3 — then ₱499",
 
   SUPPORT_EMAIL: "support@pasadophreviewer.com",
   FREE_QUESTIONS_PER_TOPIC: 10
