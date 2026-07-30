@@ -7,43 +7,61 @@
 const crypto = require("crypto");
 
 // --- server-side TikTok Purchase via Events API (token stays server-side) ---
-async function ttPurchase(email, amountCentavos, refNo, userId) {
+// Fires only from the verified webhook, after premium is activated.
+// event_id = real PayMongo payment id => TikTok dedupes retries automatically.
+async function ttPurchase(opts) {
   var token = process.env.TIKTOK_ACCESS_TOKEN;
   var pixel = process.env.TIKTOK_PIXEL_ID;
   if (!token || !pixel) return "tt-skip-no-config";
+
   function sha256(s) {
     if (!s) return undefined;
     return crypto.createHash("sha256").update(String(s).trim().toLowerCase()).digest("hex");
   }
+
+  // Identity: email + external_id hashed; only when genuinely available. No phone.
   var user = {};
-  var he = sha256(email); if (he) user.email = he;
-  var hx = sha256(userId); if (hx) user.external_id = hx;
-  // no phone: the site does not collect it
+  var he = sha256(opts.email); if (he) user.email = he;
+  var hx = sha256(opts.userId); if (hx) user.external_id = hx;
+  // context signals only when legitimately present (never fabricated)
+  if (opts.ttclid) user.ttclid = opts.ttclid;
+  if (opts.ttp) user.ttp = opts.ttp;
+  if (opts.ip) user.ip = opts.ip;
+  if (opts.userAgent) user.user_agent = opts.userAgent;
   if (!user.email && !user.external_id) return "tt-skip-no-identity";
+
+  if (!opts.paymentId) return "tt-skip-no-payment-id"; // event_id must be the real payment id
+
   var body = {
     event_source: "web",
     event_source_id: pixel,
     data: [{
       event: "Purchase",
       event_time: Math.floor(Date.now() / 1000),
-      event_id: "purchase_" + (refNo || Date.now()),   // dedupe key across pixel + Events API
+      event_id: opts.paymentId,
       user: user,
       properties: {
+        value: 299,
+        currency: "PHP",
         content_id: "pasadoph_lifetime",
         content_name: "PasadoPH Lifetime Access",
-        content_type: "product",
-        currency: "PHP",
-        value: amountCentavos ? amountCentavos / 100 : 299
-      }
+        content_type: "product"
+      },
+      page: { url: "https://pasadophreviewer.com/?paid=1" }
     }]
   };
+
   try {
     var r = await fetch("https://business-api.tiktok.com/open_api/v1.3/event/track/", {
       method: "POST",
       headers: { "Access-Token": token, "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
-    return r.ok ? "tt-purchase-sent" : "tt-purchase-failed-" + r.status;
+    var j = {};
+    try { j = await r.json(); } catch (e) {}
+    // TikTok returns { code: 0 } on success even with HTTP 200
+    if (r.ok && (j.code === 0 || typeof j.code === "undefined")) return "tt-purchase-sent";
+    return "tt-purchase-failed-" + (j.code != null ? j.code : r.status);
   } catch (e) { return "tt-purchase-error"; }
 }
 
@@ -159,18 +177,31 @@ exports.handler = async function (event) {
       }
     }
 
-    // amount + reference for Purchase event
-    var amt = 0, ref = "";
+    // Extract the REAL PayMongo payment id for event_id (dedupe key)
+    var paymentId = "";
     try {
-      var at = (payload.data.attributes.data && payload.data.attributes.data.attributes) || {};
-      amt = at.amount || (at.payments && at.payments[0] && at.payments[0].attributes && at.payments[0].attributes.amount) || 0;
-      ref = at.reference_number || (at.payment_intent && at.payment_intent.id) || (payload.data.attributes.data && payload.data.attributes.data.id) || "";
+      var dd = payload.data.attributes.data;
+      var at = (dd && dd.attributes) || {};
+      // checkout_session.payment.paid / payment.paid shapes
+      paymentId =
+        (at.payments && at.payments[0] && at.payments[0].id) ||
+        (at.payment_intent && at.payment_intent.attributes && at.payment_intent.attributes.payments && at.payment_intent.attributes.payments[0] && at.payment_intent.attributes.payments[0].id) ||
+        (dd && dd.id) || "";
     } catch (e) {}
 
+    // Optional TikTok click context, only if forwarded (never fabricated)
+    var hdrs = event.headers || {};
     var ttStatus = "tt-skip-no-account";
     if (updated.length) {
-      // fire once per payment; external_id uses the matched profile id when available
-      ttStatus = await ttPurchase(updated[0], amt, ref, (updatedIds[0] || ""));
+      ttStatus = await ttPurchase({
+        email: updated[0],
+        userId: (updatedIds[0] || ""),
+        paymentId: paymentId,
+        ip: hdrs["x-nf-client-connection-ip"] || hdrs["x-forwarded-for"] || null,
+        userAgent: hdrs["user-agent"] || null,
+        ttclid: null,   // not available server-side unless captured at checkout; left null legitimately
+        ttp: null
+      });
     }
 
     return { statusCode: 200, body: "premium granted: " + (updated.join(", ") || "no matching account — manual check needed") + " | tiktok: " + ttStatus };
