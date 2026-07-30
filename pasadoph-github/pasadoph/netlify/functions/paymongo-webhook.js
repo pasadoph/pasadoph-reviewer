@@ -6,6 +6,48 @@
 
 const crypto = require("crypto");
 
+// --- server-side TikTok Purchase via Events API (token stays server-side) ---
+async function ttPurchase(email, amountCentavos, refNo, userId) {
+  var token = process.env.TIKTOK_ACCESS_TOKEN;
+  var pixel = process.env.TIKTOK_PIXEL_ID;
+  if (!token || !pixel) return "tt-skip-no-config";
+  function sha256(s) {
+    if (!s) return undefined;
+    return crypto.createHash("sha256").update(String(s).trim().toLowerCase()).digest("hex");
+  }
+  var user = {};
+  var he = sha256(email); if (he) user.email = he;
+  var hx = sha256(userId); if (hx) user.external_id = hx;
+  // no phone: the site does not collect it
+  if (!user.email && !user.external_id) return "tt-skip-no-identity";
+  var body = {
+    event_source: "web",
+    event_source_id: pixel,
+    data: [{
+      event: "Purchase",
+      event_time: Math.floor(Date.now() / 1000),
+      event_id: "purchase_" + (refNo || Date.now()),   // dedupe key across pixel + Events API
+      user: user,
+      properties: {
+        content_id: "pasadoph_lifetime",
+        content_name: "PasadoPH Lifetime Access",
+        content_type: "product",
+        currency: "PHP",
+        value: amountCentavos ? amountCentavos / 100 : 299
+      }
+    }]
+  };
+  try {
+    var r = await fetch("https://business-api.tiktok.com/open_api/v1.3/event/track/", {
+      method: "POST",
+      headers: { "Access-Token": token, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    return r.ok ? "tt-purchase-sent" : "tt-purchase-failed-" + r.status;
+  } catch (e) { return "tt-purchase-error"; }
+}
+
+
 
 // --- send a branded receipt via Brevo (optional; skipped if no API key) ---
 async function sendReceipt(email, amountCentavos, refNo) {
@@ -29,22 +71,8 @@ async function sendReceipt(email, amountCentavos, refNo) {
     + 'Date: ' + new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" })
     + '</td></tr>'
     + '<tr><td align="center" style="padding-top:24px"><a href="https://pasadophreviewer.com" style="display:inline-block;background:#f5b800;color:#1b2a55;font-size:15px;font-weight:bold;text-decoration:none;padding:13px 34px;border:2px solid #1b2a55;border-radius:10px">Go to my review desk</a></td></tr>'
-    + '<tr><td align="center" style="font-size:11px;color:#9aa0b0;padding-top:22px;line-height:1.5">Questions? Email us at <a href="mailto:support@pasadophreviewer.com" style="color:#1b2a55">support@pasadophreviewer.com</a> or use the Contact us form on our site.<br/>PasadoPH is an independent study tool, not affiliated with the Civil Service Commission.</td></tr>'
+    + '<tr><td align="center" style="font-size:11px;color:#9aa0b0;padding-top:22px;line-height:1.5">Questions? Reply to this email or use the Contact us form on our site.<br/>PasadoPH is an independent study tool, not affiliated with the Civil Service Commission.</td></tr>'
     + '</table></td></tr></table>';
-
-  var text = 'PasadoPH — CSE-PPT Reviewer\n\n'
-    + 'Payment received. Salamat!\n\n'
-    + 'Your PasadoPH Premium access is now active on this email address. '
-    + 'Just log in at https://pasadophreviewer.com and start reviewing.\n\n'
-    + 'OFFICIAL RECEIPT\n'
-    + 'Item: PasadoPH Premium - Lifetime Access\n'
-    + 'Amount paid: PHP ' + peso + '\n'
-    + 'Reference no: ' + (refNo || "-") + '\n'
-    + 'Account: ' + email + '\n'
-    + 'Date: ' + new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }) + '\n\n'
-    + 'Go to your review desk: https://pasadophreviewer.com\n\n'
-    + 'Questions? Email us at support@pasadophreviewer.com or use the Contact us form on our site.\n\n'
-    + 'PasadoPH is an independent study tool, not affiliated with the Civil Service Commission.';
 
   try {
     var r = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -52,11 +80,9 @@ async function sendReceipt(email, amountCentavos, refNo) {
       headers: { "api-key": key, "Content-Type": "application/json", accept: "application/json" },
       body: JSON.stringify({
         sender: { name: "PasadoPH", email: process.env.RECEIPT_FROM || "noreply@pasadophreviewer.com" },
-        replyTo: { name: "PasadoPH Support", email: "support@pasadophreviewer.com" },
         to: [{ email: email }],
         subject: "Your PasadoPH receipt \u2014 Premium access activated",
-        htmlContent: html,
-        textContent: text
+        htmlContent: html
       })
     });
     return r.ok ? "receipt-sent" : "receipt-failed-" + r.status;
@@ -111,6 +137,7 @@ exports.handler = async function (event) {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     let updated = [];
+    let updatedIds = [];
     for (const email of found) {
       const res = await fetch(
         url + "/rest/v1/profiles?email=ilike." + encodeURIComponent(email),
@@ -126,22 +153,27 @@ exports.handler = async function (event) {
         }
       );
       const rows = await res.json();
-      if (Array.isArray(rows) && rows.length) updated = updated.concat(rows.map(function (r) { return r.email; }));
+      if (Array.isArray(rows) && rows.length) {
+        updated = updated.concat(rows.map(function (r) { return r.email; }));
+        updatedIds = updatedIds.concat(rows.map(function (r) { return r.id; }));
+      }
     }
 
-    // --- send the branded receipt to each activated account ---
-    var receiptStatus = "no-recipient";
-    var receiptTargets = updated.length ? updated : found;
-    for (var i = 0; i < receiptTargets.length; i++) {
-      receiptStatus = await sendReceipt(receiptTargets[i], amt, ref);
+    // amount + reference for Purchase event
+    var amt = 0, ref = "";
+    try {
+      var at = (payload.data.attributes.data && payload.data.attributes.data.attributes) || {};
+      amt = at.amount || (at.payments && at.payments[0] && at.payments[0].attributes && at.payments[0].attributes.amount) || 0;
+      ref = at.reference_number || (at.payment_intent && at.payment_intent.id) || (payload.data.attributes.data && payload.data.attributes.data.id) || "";
+    } catch (e) {}
+
+    var ttStatus = "tt-skip-no-account";
+    if (updated.length) {
+      // fire once per payment; external_id uses the matched profile id when available
+      ttStatus = await ttPurchase(updated[0], amt, ref, (updatedIds[0] || ""));
     }
 
-    return {
-      statusCode: 200,
-      body: "premium granted: " +
-        (updated.join(", ") || "no matching account — manual check needed") +
-        " | receipt: " + receiptStatus
-    };
+    return { statusCode: 200, body: "premium granted: " + (updated.join(", ") || "no matching account — manual check needed") + " | tiktok: " + ttStatus };
   } catch (e) {
     return { statusCode: 500, body: "error: " + e.message };
   }
