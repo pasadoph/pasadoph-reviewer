@@ -29,10 +29,10 @@ exports.handler = async function (event) {
           line_items: [{ name: "PasadoPH Lifetime Access", amount: amount, currency: "PHP", quantity: 1 }],
           billing: { email: email },
           payment_method_types: methods,
-          description: "PasadoPH Premium - lifetime access for " + email,
+          description: "PasadoPH Premium - lifetime access for " + email + ". After paying, please wait for the countdown - you will be redirected back to your premium account automatically.",
           metadata: { account_email: email },
           success_url: site + "/?paid=1",
-          cancel_url: site + "/?cancelled=1",
+          cancel_url: site + "/?buy=1&cancelled=1",
           send_email_receipt: true,
           show_line_items: true,
           show_description: true
