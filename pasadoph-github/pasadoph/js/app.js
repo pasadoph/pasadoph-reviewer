@@ -164,11 +164,16 @@
       document.getElementById("tbDash").onclick = function () { go("dashboard"); };
       document.getElementById("tbOut").onclick = signOut;
     } else {
-      $actions.innerHTML =
-        '<button class="btn btn-sm" id="tbIn">Log in</button>' +
-        '<button class="btn btn-primary btn-sm" id="tbUp">Start free</button>';
-      document.getElementById("tbIn").onclick = function () { go("auth", "login"); };
-      document.getElementById("tbUp").onclick = function () { go("auth", "register"); };
+      if (state.view === "buy") {
+        $actions.innerHTML = '<button class="btn btn-sm" id="tbIn">Log in</button>';
+        document.getElementById("tbIn").onclick = function () { go("auth", "login"); };
+      } else {
+        $actions.innerHTML =
+          '<button class="btn btn-sm" id="tbIn">Log in</button>' +
+          '<button class="btn btn-primary btn-sm" id="tbUp">Start free</button>';
+        document.getElementById("tbIn").onclick = function () { go("auth", "login"); };
+        document.getElementById("tbUp").onclick = function () { go("auth", "register"); };
+      }
     }
   }
 
@@ -186,44 +191,63 @@
     var compare = esc(CFG.PRICE_COMPARE || "\u20b1499");
     var price = esc(CFG.PRICE_LABEL || "\u20b1299");
     $app.innerHTML =
-      '<section class="hero" style="padding-top:34px">' +
+      '<section style="max-width:920px;margin:0 auto;padding:34px 4px 10px">' +
         '<div style="text-align:center">' +
           '<p class="eyebrow">CSE-PPT PROFESSIONAL & SUBPROFESSIONAL</p>' +
-          '<h1 style="font-size:clamp(1.8rem,6vw,2.8rem);max-width:18ch;margin:0 auto">Pass the Civil Service Exam. <span class="shade">Lifetime access.</span></h1>' +
-          '<div style="margin:20px auto 6px;display:inline-flex;align-items:baseline;gap:12px">' +
-            '<s style="opacity:0.5;font-size:1.4rem">' + compare + '</s>' +
-            '<span style="font-family:var(--font-display);font-size:2.6rem">' + price + '</span>' +
+          '<h1 style="font-size:clamp(2rem,5vw,3.2rem);line-height:1.08;max-width:20ch;margin:0 auto">Prepare Smarter for the <span class="shade">Civil Service Exam</span></h1>' +
+          '<p style="font-size:1.05rem;color:#38405e;max-width:46ch;margin:16px auto 0">300 practice questions with detailed solutions, plus a timed 170-item mock exam. Study on any device.</p>' +
+        '</div>' +
+
+        // two-column on desktop: offer/form left, proof right
+        '<div class="buy-grid" style="display:grid;grid-template-columns:1fr;gap:24px;margin-top:28px;align-items:start">' +
+
+          '<div class="buy-card" style="background:var(--white);border:2px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px">' +
+            '<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">' +
+              '<s style="opacity:0.5;font-size:1.5rem">' + compare + '</s>' +
+              '<span style="font-family:var(--font-display);font-size:3rem">' + price + '</span>' +
+              '<span style="background:var(--sun);color:var(--ink);font-weight:700;font-size:0.8rem;padding:5px 10px;border-radius:6px">40% OFF</span>' +
+            '</div>' +
+            '<p style="font-family:var(--font-mono);font-size:0.82rem;color:var(--ink);margin-top:8px;font-weight:600">One payment \u00b7 Lifetime access \u00b7 No monthly subscription</p>' +
+            '<p style="font-size:0.8rem;color:var(--muted);margin-top:2px">Launch price ends August 7</p>' +
+            '<ul style="list-style:none;display:grid;gap:9px;font-size:0.98rem;margin:18px 0">' +
+              '<li>\u2705 <b>300 questions</b> with step-by-step solutions</li>' +
+              '<li>\u2705 <b>Timed 170-item mock exam</b> \u2014 like exam day</li>' +
+              '<li>\u2705 Professional & Subprofessional coverage</li>' +
+              '<li>\u2705 Scores saved & synced on any device</li>' +
+            '</ul>' +
+            '<div class="field"><label for="buyEmail">Enter your email to get access</label>' +
+              '<input id="buyEmail" type="email" autocomplete="email" placeholder="you@email.com" value="' + esc(prefillEmail || "") + '" /></div>' +
+            '<button class="btn btn-primary btn-block" id="buyGo" style="font-size:1.05rem;padding:14px">Get Lifetime Access \u2014 ' + price + '</button>' +
+            '<div id="buyMsg"></div>' +
+            '<p style="font-size:0.8rem;color:var(--muted);text-align:center;margin-top:12px">\ud83d\udd12 Secure payment powered by PayMongo \u00b7 GCash, Maya & cards</p>' +
+            '<p style="font-size:0.78rem;text-align:center;margin-top:6px">Account is created automatically after payment \u2014 we email you a link to set your password.</p>' +
           '</div>' +
-          '<div><span style="display:inline-block;background:var(--sun);color:var(--ink);font-weight:700;font-size:0.85rem;padding:5px 12px;border-radius:6px">40% OFF - Launch price, ends August 7</span></div>' +
+
+          '<div style="display:grid;gap:18px">' +
+            '<figure style="margin:0;background:var(--white);border:2px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">' +
+              '<img src="img/shot-question.png" alt="Practice question with detailed solution" style="width:100%;display:block" loading="lazy" />' +
+              '<figcaption style="font-size:0.82rem;color:#38405e;padding:10px 14px"><b>Every answer explained</b> \u2014 why it\'s right and why the traps are wrong.</figcaption>' +
+            '</figure>' +
+            '<figure style="margin:0;background:var(--white);border:2px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">' +
+              '<img src="img/shot-mock.png" alt="Timed 170-item mock exam" style="width:100%;display:block" loading="lazy" />' +
+              '<figcaption style="font-size:0.82rem;color:#38405e;padding:10px 14px"><b>Real exam simulation</b> \u2014 timed 170-item mock, scored vs the 80.00 passing grade.</figcaption>' +
+            '</figure>' +
+          '</div>' +
+
         '</div>' +
 
-        '<div class="buy-card" style="max-width:460px;margin:26px auto 0;background:var(--white);border:2px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px">' +
-          '<ul style="list-style:none;display:grid;gap:9px;font-size:0.95rem;margin-bottom:18px">' +
-            '<li>\u2705 <b>300 questions</b> with detailed step-by-step solutions</li>' +
-            '<li>\u2705 <b>Timed 170-item mock exam</b> - just like exam day</li>' +
-            '<li>\u2705 Both Professional & Subprofessional coverage</li>' +
-            '<li>\u2705 Scores saved & synced on any device</li>' +
-            '<li>\u2705 <b>One payment. Lifetime access.</b> No subscription.</li>' +
-          '</ul>' +
-          '<div class="field"><label for="buyEmail">Enter your email to get access</label>' +
-            '<input id="buyEmail" type="email" autocomplete="email" placeholder="you@email.com" value="' + esc(prefillEmail || "") + '" /></div>' +
-          '<button class="btn btn-primary btn-block" id="buyGo">Get Lifetime Access - ' + price + '</button>' +
-          '<div id="buyMsg"></div>' +
-          '<p style="font-size:0.78rem;color:var(--muted);text-align:center;margin-top:12px">\ud83d\udd12 Secure payment powered by PayMongo \u00b7 GCash, Maya & cards</p>' +
-          '<p style="font-size:0.78rem;text-align:center;margin-top:6px">Your account is created automatically after payment - we\'ll email you a link to set your password.</p>' +
+        '<div style="background:var(--paper-deep);border-radius:var(--radius);padding:18px;text-align:center;font-size:0.92rem;color:#38405e;max-width:640px;margin:26px auto 0">' +
+          '<b>Why PasadoPH?</b> Most free reviewers give you an answer key. We explain <b>why</b> each answer is right \u2014 that\'s how you actually improve before August 9.' +
         '</div>' +
-
-        '<p style="text-align:center;margin-top:18px;font-size:0.85rem">' +
-          'Want to try first? <button id="buyTryFree" style="background:none;border:none;text-decoration:underline;font-weight:700;color:var(--ink);cursor:pointer;font-size:0.85rem">Start with 10 free questions</button>' +
-        '</p>' +
-      '</section>' +
-
-      '<section style="max-width:560px;margin:10px auto 40px">' +
-        '<div style="background:var(--paper-deep);border-radius:var(--radius);padding:18px;text-align:center;font-size:0.9rem;color:#38405e">' +
-          '<b>Why PasadoPH?</b><br>Most free reviewers give you an answer key. We explain <b>why</b> each answer is right and why the traps are wrong - that\'s how you actually improve before August 9.' +
-        '</div>' +
+        '<p style="text-align:center;margin:16px 0 40px;font-size:0.82rem;color:var(--muted)">Not ready to buy? <button id="buyTryFree" style="background:none;border:none;text-decoration:underline;color:var(--muted);cursor:pointer;font-size:0.82rem">Try 10 free questions first</button></p>' +
       '</section>';
 
+    if (!document.getElementById("buy-grid-style")) {
+      var st = document.createElement("style");
+      st.id = "buy-grid-style";
+      st.textContent = "@media(min-width:820px){.buy-grid{grid-template-columns:1fr 1fr !important}}";
+      document.head.appendChild(st);
+    }
     var goBtn = document.getElementById("buyGo");
     goBtn.onclick = async function () {
       var email = document.getElementById("buyEmail").value.trim();
