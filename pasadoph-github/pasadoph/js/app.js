@@ -142,6 +142,7 @@
     window.scrollTo(0, 0);
     renderTopbar();
     if (view === "landing") renderLanding();
+    else if (view === "buy") renderBuy(payload);
     else if (view === "auth") renderAuth(payload || "login");
     else if (view === "verify") renderVerify(payload);
     else if (view === "contact") renderContact();
@@ -177,6 +178,78 @@
     var n = 0;
     TOPICS.forEach(function (t) { n += bankFor(t.id).length; });
     return n;
+  }
+
+
+  function renderBuy(prefillEmail) {
+    ttTrack && ttTrack("ViewContent", "viewcontent_buy");
+    var compare = esc(CFG.PRICE_COMPARE || "\u20b1499");
+    var price = esc(CFG.PRICE_LABEL || "\u20b1299");
+    $app.innerHTML =
+      '<section class="hero" style="padding-top:34px">' +
+        '<div style="text-align:center">' +
+          '<p class="eyebrow">CSE-PPT PROFESSIONAL & SUBPROFESSIONAL</p>' +
+          '<h1 style="font-size:clamp(1.8rem,6vw,2.8rem);max-width:18ch;margin:0 auto">Pass the Civil Service Exam. <span class="shade">Lifetime access.</span></h1>' +
+          '<div style="margin:20px auto 6px;display:inline-flex;align-items:baseline;gap:12px">' +
+            '<s style="opacity:0.5;font-size:1.4rem">' + compare + '</s>' +
+            '<span style="font-family:var(--font-display);font-size:2.6rem">' + price + '</span>' +
+          '</div>' +
+          '<div><span style="display:inline-block;background:var(--sun);color:var(--ink);font-weight:700;font-size:0.85rem;padding:5px 12px;border-radius:6px">40% OFF - Launch price, ends July 31</span></div>' +
+        '</div>' +
+
+        '<div class="buy-card" style="max-width:460px;margin:26px auto 0;background:var(--white);border:2px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px">' +
+          '<ul style="list-style:none;display:grid;gap:9px;font-size:0.95rem;margin-bottom:18px">' +
+            '<li>\u2705 <b>300 questions</b> with detailed step-by-step solutions</li>' +
+            '<li>\u2705 <b>Timed 170-item mock exam</b> - just like exam day</li>' +
+            '<li>\u2705 Both Professional & Subprofessional coverage</li>' +
+            '<li>\u2705 Scores saved & synced on any device</li>' +
+            '<li>\u2705 <b>One payment. Lifetime access.</b> No subscription.</li>' +
+          '</ul>' +
+          '<div class="field"><label for="buyEmail">Enter your email to get access</label>' +
+            '<input id="buyEmail" type="email" autocomplete="email" placeholder="you@email.com" value="' + esc(prefillEmail || "") + '" /></div>' +
+          '<button class="btn btn-primary btn-block" id="buyGo">Get Lifetime Access - ' + price + '</button>' +
+          '<div id="buyMsg"></div>' +
+          '<p style="font-size:0.78rem;color:var(--muted);text-align:center;margin-top:12px">\ud83d\udd12 Secure payment powered by PayMongo \u00b7 GCash, Maya & cards</p>' +
+          '<p style="font-size:0.78rem;text-align:center;margin-top:6px">Your account is created automatically after payment - we\'ll email you a link to set your password.</p>' +
+        '</div>' +
+
+        '<p style="text-align:center;margin-top:18px;font-size:0.85rem">' +
+          'Want to try first? <button id="buyTryFree" style="background:none;border:none;text-decoration:underline;font-weight:700;color:var(--ink);cursor:pointer;font-size:0.85rem">Start with 10 free questions</button>' +
+        '</p>' +
+      '</section>' +
+
+      '<section style="max-width:560px;margin:10px auto 40px">' +
+        '<div style="background:var(--paper-deep);border-radius:var(--radius);padding:18px;text-align:center;font-size:0.9rem;color:#38405e">' +
+          '<b>Why PasadoPH?</b><br>Most free reviewers give you an answer key. We explain <b>why</b> each answer is right and why the traps are wrong - that\'s how you actually improve before August 9.' +
+        '</div>' +
+      '</section>';
+
+    var goBtn = document.getElementById("buyGo");
+    goBtn.onclick = async function () {
+      var email = document.getElementById("buyEmail").value.trim();
+      var msg = document.getElementById("buyMsg");
+      if (!email || email.indexOf("@") < 1) {
+        msg.innerHTML = '<div class="form-msg err">Please enter a valid email address.</div>';
+        return;
+      }
+      goBtn.disabled = true;
+      goBtn.textContent = "Preparing secure checkout\u2026";
+      try {
+        var res = await fetch("/.netlify/functions/create-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, origin: window.location.origin })
+        });
+        var out = await res.json();
+        if (out && out.url) { await (ttTrack ? ttTrack("InitiateCheckout", "ic_" + out.url) : Promise.resolve()); window.location.href = out.url; return; }
+        throw new Error("no url");
+      } catch (e) {
+        if (CFG.PAYMONGO_LINK) { window.open(CFG.PAYMONGO_LINK, "_blank"); }
+        goBtn.disabled = false;
+        goBtn.textContent = "Get Lifetime Access - " + price;
+      }
+    };
+    document.getElementById("buyTryFree").onclick = function () { go("auth", "register"); };
   }
 
   function renderLanding() {
@@ -959,7 +1032,15 @@
       return;
     }
     var params = new URLSearchParams(window.location.search);
+    var wantBuy = params.get("buy") === "1";
     var justPaid = params.get("paid") === "1";
+    if (wantBuy && !justPaid) {
+      // Ad landing: logged-in non-premium -> upgrade; logged-in premium -> dashboard; logged-out -> sales page
+      if (state.user && state.premium) { go("dashboard"); return; }
+      if (state.user && !state.premium) { go("upgrade"); return; }
+      go("buy");
+      return;
+    }
     if (params.get("paid") || params.get("cancelled")) {
       try { window.history.replaceState({}, "", window.location.pathname); } catch (e) {}
     }
@@ -968,12 +1049,31 @@
       return;
     }
     if (justPaid && !state.user) {
-      state.flashMsg = "Payment received! Log in with your account email to access your premium features.";
-      go("auth", "login");
+      renderPaidNewBuyer();
       return;
     }
     go(state.user ? "dashboard" : "landing");
   })();
+
+
+  function renderPaidNewBuyer() {
+    $app.innerHTML =
+      '<div class="auth-card" style="text-align:center">' +
+        '<div class="verify-icon" aria-hidden="true">\u2713</div>' +
+        "<h2>Payment received - salamat!</h2>" +
+        '<p class="sub">Your PasadoPH Premium is being activated on the email you used to pay.</p>' +
+        '<div style="background:var(--sun-soft);border:1.5px solid var(--sun);border-radius:8px;padding:12px 14px;font-size:0.88rem;text-align:left;margin:16px 0">' +
+          '<b>Next step:</b> Check your email for a message from PasadoPH to <b>set your password</b>, then log in. ' +
+          'Check your <b>Spam/Promotions</b> folder too and mark it \u201cNot spam.\u201d' +
+        '</div>' +
+        '<button class="btn btn-primary btn-block" id="pnbForgot">Set / reset my password now</button>' +
+        '<button class="btn btn-block" id="pnbLogin" style="margin-top:8px">I already have a password - log in</button>' +
+        '<p class="upgrade-note" style="margin-top:12px">Paid but need help? <button id="pnbContact" style="background:none;border:none;text-decoration:underline;font-weight:700;color:var(--muted);cursor:pointer;font-size:inherit">Contact us</button></p>' +
+      "</div>";
+    document.getElementById("pnbForgot").onclick = function () { go("forgot"); };
+    document.getElementById("pnbLogin").onclick = function () { go("auth", "login"); };
+    document.getElementById("pnbContact").onclick = function () { go("contact"); };
+  }
 
   async function renderPaidWait() {
     // If the webhook already activated this account, go straight in.
