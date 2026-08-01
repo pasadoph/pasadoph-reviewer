@@ -170,7 +170,51 @@ exports.handler = async function (event) {
           body: JSON.stringify({ is_premium: true })
         }
       );
-      const rows = await res.json();
+      let rows = await res.json();
+
+      // Email-first funnel: buyer paid without registering -> create the account now.
+      if (!(Array.isArray(rows) && rows.length)) {
+        try {
+          const created = await fetch(url + "/auth/v1/admin/users", {
+            method: "POST",
+            headers: {
+              apikey: key,
+              Authorization: "Bearer " + key,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              email: email,
+              email_confirm: true,               // no verification wall; they set a password via reset link
+              user_metadata: { source: "paid_signup" }
+            })
+          });
+          const cu = await created.json();
+          const newId = cu && cu.id;
+          if (newId) {
+            // profile row is created by the on-signup trigger; flip premium on it
+            await fetch(url + "/rest/v1/profiles?id=eq." + encodeURIComponent(newId), {
+              method: "PATCH",
+              headers: {
+                apikey: key,
+                Authorization: "Bearer " + key,
+                "Content-Type": "application/json",
+                Prefer: "return=representation"
+              },
+              body: JSON.stringify({ is_premium: true, email: email })
+            });
+            // trigger a password-setup (recovery) email so the buyer can log in
+            try {
+              await fetch(url + "/auth/v1/recover", {
+                method: "POST",
+                headers: { apikey: key, "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email })
+              });
+            } catch (e) {}
+            rows = [{ email: email, id: newId }];
+          }
+        } catch (e) {}
+      }
+
       if (Array.isArray(rows) && rows.length) {
         updated = updated.concat(rows.map(function (r) { return r.email; }));
         updatedIds = updatedIds.concat(rows.map(function (r) { return r.id; }));
