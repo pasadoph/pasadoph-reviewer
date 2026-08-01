@@ -194,7 +194,7 @@
             '<s style="opacity:0.5;font-size:1.4rem">' + compare + '</s>' +
             '<span style="font-family:var(--font-display);font-size:2.6rem">' + price + '</span>' +
           '</div>' +
-          '<div><span style="display:inline-block;background:var(--sun);color:var(--ink);font-weight:700;font-size:0.85rem;padding:5px 12px;border-radius:6px">40% OFF - Launch price, ends July 31</span></div>' +
+          '<div><span style="display:inline-block;background:var(--sun);color:var(--ink);font-weight:700;font-size:0.85rem;padding:5px 12px;border-radius:6px">40% OFF - Launch price, ends August 7</span></div>' +
         '</div>' +
 
         '<div class="buy-card" style="max-width:460px;margin:26px auto 0;background:var(--white);border:2px solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px">' +
