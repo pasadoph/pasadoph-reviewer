@@ -233,6 +233,28 @@
         return;
       }
       goBtn.disabled = true;
+      goBtn.textContent = "Checking\u2026";
+      // Don't charge someone who already has premium.
+      try {
+        var chk = await fetch("/.netlify/functions/check-premium", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email })
+        });
+        var cj = await chk.json();
+        if (cj && cj.premium) {
+          msg.innerHTML = '<div class="form-msg ok"><b>You already have PasadoPH Premium on this email!</b> No need to pay again \u2014 just log in to access all your questions and the mock exam.</div>' +
+            '<button class="btn btn-block" id="buyLoginBtn" style="margin-top:10px">Log in to my account</button>' +
+            '<button class="btn btn-ghost btn-block" id="buyForgotBtn" style="margin-top:6px">Forgot my password</button>';
+          document.getElementById("buyLoginBtn").onclick = function () { go("auth", "login"); };
+          document.getElementById("buyForgotBtn").onclick = function () { go("forgot"); };
+          goBtn.disabled = false;
+          goBtn.textContent = "Get Lifetime Access - " + price;
+          goBtn.style.display = "none";
+          return;
+        }
+      } catch (e) { /* if the check fails, continue to checkout */ }
+
       goBtn.textContent = "Preparing secure checkout\u2026";
       try {
         var res = await fetch("/.netlify/functions/create-checkout", {
@@ -359,12 +381,15 @@
         '<p class="auth-switch">' +
           (isReg ? 'Already registered? <button id="afSwitch">Log in</button>' : 'New here? <button id="afSwitch">Create a free account</button>') +
         "</p>" +
+        (isReg ? '<p class="auth-switch" style="margin-top:2px">Changed your mind? <button id="afToPremium">Get Lifetime Premium instead \u2192</button></p>' : "") +
       "</div>";
 
     state.flashMsg = null;
     document.getElementById("afSwitch").onclick = function () {
       go("auth", isReg ? "login" : "register");
     };
+    var toPrem = document.getElementById("afToPremium");
+    if (toPrem) toPrem.onclick = function () { go(state.user ? "upgrade" : "buy"); };
     var forgotBtn = document.getElementById("afForgot");
     if (forgotBtn) forgotBtn.onclick = function () { go("forgot"); };
     var guestBtn = document.getElementById("afGuest");
