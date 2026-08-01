@@ -1066,7 +1066,7 @@
       go("buy");
       return;
     }
-    if (params.get("paid") || params.get("cancelled")) {
+    if ((params.get("paid") || params.get("cancelled")) && !wantBuy) {
       try { window.history.replaceState({}, "", window.location.pathname); } catch (e) {}
     }
     if (justPaid && state.user && supa) {
