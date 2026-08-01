@@ -239,13 +239,20 @@
         '<div style="background:var(--paper-deep);border-radius:var(--radius);padding:18px;text-align:center;font-size:0.92rem;color:#38405e;max-width:640px;margin:26px auto 0">' +
           '<b>Why PasadoPH?</b> Most free reviewers give you an answer key. We explain <b>why</b> each answer is right \u2014 that\'s how you actually improve before August 9.' +
         '</div>' +
+        '<div style="max-width:920px;margin:34px auto 0">' +
+          '<h2 style="text-align:center;font-size:1.4rem;margin-bottom:6px">What examinees are saying</h2>' +
+          '<div class="review-grid" style="display:grid;grid-template-columns:1fr;gap:18px;margin-top:16px">' +
+            '<figure style="margin:0"><img src="img/review-1.png" alt="Student review" style="width:100%;display:block;border-radius:var(--radius)" loading="lazy" /></figure>' +
+            '<figure style="margin:0"><img src="img/review-2.png" alt="Student review" style="width:100%;display:block;border-radius:var(--radius)" loading="lazy" /></figure>' +
+          '</div>' +
+        '</div>' +
         '<p style="text-align:center;margin:16px 0 40px;font-size:0.82rem;color:var(--muted)">Not ready to buy? <button id="buyTryFree" style="background:none;border:none;text-decoration:underline;color:var(--muted);cursor:pointer;font-size:0.82rem">Try 10 free questions first</button></p>' +
       '</section>';
 
     if (!document.getElementById("buy-grid-style")) {
       var st = document.createElement("style");
       st.id = "buy-grid-style";
-      st.textContent = "@media(min-width:820px){.buy-grid{grid-template-columns:1fr 1fr !important}}";
+      st.textContent = "@media(min-width:820px){.buy-grid{grid-template-columns:1fr 1fr !important}.review-grid{grid-template-columns:1fr 1fr !important}}";
       document.head.appendChild(st);
     }
     var goBtn = document.getElementById("buyGo");
