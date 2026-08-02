@@ -164,16 +164,8 @@
       document.getElementById("tbDash").onclick = function () { go("dashboard"); };
       document.getElementById("tbOut").onclick = signOut;
     } else {
-      if (state.view === "buy") {
-        $actions.innerHTML = '<button class="btn btn-sm" id="tbIn">Log in</button>';
-        document.getElementById("tbIn").onclick = function () { go("auth", "login"); };
-      } else {
-        $actions.innerHTML =
-          '<button class="btn btn-sm" id="tbIn">Log in</button>' +
-          '<button class="btn btn-primary btn-sm" id="tbUp">Start free</button>';
-        document.getElementById("tbIn").onclick = function () { go("auth", "login"); };
-        document.getElementById("tbUp").onclick = function () { go("auth", "register"); };
-      }
+      $actions.innerHTML = '<button class="btn btn-sm" id="tbIn">Log in</button>';
+      document.getElementById("tbIn").onclick = function () { go("auth", "login"); };
     }
   }
 
@@ -263,6 +255,8 @@
         msg.innerHTML = '<div class="form-msg err">Please enter a valid email address.</div>';
         return;
       }
+      // Fire InitiateCheckout immediately on intent (survives slow networks / in-app browsers).
+      try { if (typeof window.ttq !== "undefined") window.ttq.track("InitiateCheckout", { content_id: "pasadoph_lifetime", content_name: "PasadoPH Lifetime Access", content_type: "product", currency: "PHP", value: 299 }); } catch (e) {}
       goBtn.disabled = true;
       goBtn.textContent = "Checking\u2026";
       // Don't charge someone who already has premium.
@@ -294,7 +288,7 @@
           body: JSON.stringify({ email: email, origin: window.location.origin })
         });
         var out = await res.json();
-        if (out && out.url) { await (ttTrack ? ttTrack("InitiateCheckout", "ic_" + out.url) : Promise.resolve()); window.location.href = out.url; return; }
+        if (out && out.url) { window.location.href = out.url; return; }
         throw new Error("no url");
       } catch (e) {
         if (CFG.PAYMONGO_LINK) { window.open(CFG.PAYMONGO_LINK, "_blank"); }
