@@ -180,6 +180,7 @@
 
   function renderBuy(prefillEmail) {
     ttTrack && ttTrack("ViewContent", "viewcontent_buy");
+    try { if (typeof window.fbq !== "undefined" && !window._fbViewContent) { window._fbViewContent = true; window.fbq("track", "ViewContent", { content_ids: ["pasadoph_lifetime"], content_name: "PasadoPH Lifetime Access", content_type: "product", value: 299, currency: "PHP" }); } } catch (e) {}
     var compare = esc(CFG.PRICE_COMPARE || "\u20b1499");
     var price = esc(CFG.PRICE_LABEL || "\u20b1299");
     $app.innerHTML =
@@ -257,6 +258,7 @@
       }
       // Fire InitiateCheckout immediately on intent (survives slow networks / in-app browsers).
       try { if (typeof window.ttq !== "undefined") window.ttq.track("InitiateCheckout", { content_id: "pasadoph_lifetime", content_name: "PasadoPH Lifetime Access", content_type: "product", currency: "PHP", value: 299 }); } catch (e) {}
+      try { if (typeof window.fbq !== "undefined") window.fbq("track", "InitiateCheckout", { content_ids: ["pasadoph_lifetime"], content_name: "PasadoPH Lifetime Access", content_type: "product", value: 299, currency: "PHP", num_items: 1 }); } catch (e) {}
       goBtn.disabled = true;
       goBtn.textContent = "Checking\u2026";
       // Don't charge someone who already has premium.
@@ -345,7 +347,10 @@
     document.getElementById("ctaLogin").onclick = function () { go("auth", "login"); };
     document.getElementById("planFree").onclick = function () { go("auth", "register"); };
     document.getElementById("planPaid").onclick = function () {
-      state.user ? go("upgrade") : go("auth", "register");
+      // Logged-in non-premium -> upgrade; logged-in premium -> dashboard; logged-out -> email-first buy flow
+      if (state.user && state.premium) { go("dashboard"); return; }
+      if (state.user) { go("upgrade"); return; }
+      go("buy");
     };
   }
 
@@ -906,7 +911,7 @@
           })
         });
         var out = await res.json();
-        if (out && out.url) { await ttTrack("InitiateCheckout", "initiatecheckout_" + out.url); window.location.href = out.url; return; }
+        if (out && out.url) { await ttTrack("InitiateCheckout", "initiatecheckout_" + out.url); try { if (typeof window.fbq !== "undefined") window.fbq("track", "InitiateCheckout", { content_ids: ["pasadoph_lifetime"], content_name: "PasadoPH Lifetime Access", content_type: "product", value: 299, currency: "PHP", num_items: 1 }); } catch (e) {} window.location.href = out.url; return; }
         throw new Error("no url");
       } catch (e) {
         // fallback to the hosted payment page
