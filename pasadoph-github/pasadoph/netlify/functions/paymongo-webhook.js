@@ -65,6 +65,57 @@ async function ttPurchase(opts) {
   } catch (e) { return "tt-purchase-error"; }
 }
 
+// --- server-side Meta Purchase via Conversions API (token stays server-side) ---
+async function metaPurchase(opts) {
+  var token = process.env.META_CONVERSIONS_API_TOKEN;
+  var pixel = process.env.META_PIXEL_ID;
+  if (!token || !pixel) return "meta-skip-no-config";
+  function sha256(s) {
+    if (!s) return undefined;
+    return crypto.createHash("sha256").update(String(s).trim().toLowerCase()).digest("hex");
+  }
+  if (!opts.paymentId) return "meta-skip-no-payment-id"; // event_id must be the real payment id
+
+  var user_data = {};
+  var he = sha256(opts.email); if (he) user_data.em = [he];
+  var hx = sha256(opts.userId); if (hx) user_data.external_id = [hx];
+  if (opts.ip) user_data.client_ip_address = opts.ip;
+  if (opts.userAgent) user_data.client_user_agent = opts.userAgent;
+  if (opts.fbp) user_data.fbp = opts.fbp;
+  if (opts.fbc) user_data.fbc = opts.fbc;
+  if (!user_data.em && !user_data.external_id) return "meta-skip-no-identity";
+
+  var body = {
+    data: [{
+      event_name: "Purchase",
+      event_time: Math.floor(Date.now() / 1000),
+      event_id: opts.paymentId,             // same id as pixel -> Meta dedupes
+      action_source: "website",
+      event_source_url: "https://pasadophreviewer.com/?buy=1",
+      user_data: user_data,
+      custom_data: {
+        content_ids: ["pasadoph_lifetime"],
+        content_name: "PasadoPH Lifetime Access",
+        content_type: "product",
+        value: 299,
+        currency: "PHP",
+        num_items: 1
+      }
+    }]
+  };
+
+  try {
+    var r = await fetch(
+      "https://graph.facebook.com/v19.0/" + encodeURIComponent(pixel) + "/events?access_token=" + encodeURIComponent(token),
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    );
+    var j = {};
+    try { j = await r.json(); } catch (e) {}
+    if (r.ok && j && typeof j.events_received !== "undefined") return "meta-purchase-sent";
+    return "meta-purchase-failed-" + (j && j.error && j.error.code ? j.error.code : r.status);
+  } catch (e) { return "meta-purchase-error"; }
+}
+
 
 
 // --- send a branded receipt via Brevo (optional; skipped if no API key) ---
@@ -236,19 +287,31 @@ exports.handler = async function (event) {
     // Optional TikTok click context, only if forwarded (never fabricated)
     var hdrs = event.headers || {};
     var ttStatus = "tt-skip-no-account";
+    var metaStatus = "meta-skip-no-account";
     if (updated.length) {
+      var ipAddr = hdrs["x-nf-client-connection-ip"] || hdrs["x-forwarded-for"] || null;
+      var ua = hdrs["user-agent"] || null;
       ttStatus = await ttPurchase({
         email: updated[0],
         userId: (updatedIds[0] || ""),
         paymentId: paymentId,
-        ip: hdrs["x-nf-client-connection-ip"] || hdrs["x-forwarded-for"] || null,
-        userAgent: hdrs["user-agent"] || null,
+        ip: ipAddr,
+        userAgent: ua,
         ttclid: null,   // not available server-side unless captured at checkout; left null legitimately
         ttp: null
       });
+      metaStatus = await metaPurchase({
+        email: updated[0],
+        userId: (updatedIds[0] || ""),
+        paymentId: paymentId,
+        ip: ipAddr,
+        userAgent: ua,
+        fbp: null,      // _fbp/_fbc not available server-side unless captured at checkout; left null legitimately
+        fbc: null
+      });
     }
 
-    return { statusCode: 200, body: "premium granted: " + (updated.join(", ") || "no matching account — manual check needed") + " | tiktok: " + ttStatus };
+    return { statusCode: 200, body: "premium granted: " + (updated.join(", ") || "no matching account — manual check needed") + " | tiktok: " + ttStatus + " | meta: " + metaStatus };
   } catch (e) {
     return { statusCode: 500, body: "error: " + e.message };
   }
